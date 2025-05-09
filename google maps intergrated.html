@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Cab Compare</title>
+  <style>
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background-color: #f4f4f9;
+      margin: 0;
+      padding: 0;
+    }
+
+    .container {
+            margin-top: 20px;
+            padding: 50px;
+            background-image: url('./taxi.png');
+            background-size: cover;
+            background-position: center;
+            background-repeat: no-repeat;
+            min-height: 400px;
+            color: white;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.7);    }
+
+    h2 {
+      margin-bottom: 20px;
+      color: #ebe4e4;
+    }
+
+    input[type="text"] {
+      width: 100%;
+      padding: 12px 15px;
+      margin: 10px 0;
+      border-radius: 8px;
+      border: 1px solid #ccc;
+      font-size: 16px;
+      box-sizing: border-box;
+      transition: all 0.3s ease;
+    }
+
+    input[type="text"]:focus {
+      border-color: #007bff;
+      outline: none;
+      box-shadow: 0 0 8px rgba(0, 123, 255, 0.2);
+    }
+
+    button {
+      padding: 12px 25px;
+      background-color: #007bff;
+      color: white;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 16px;
+      margin-top: 10px;
+      transition: background-color 0.3s ease;
+    }
+
+    button:hover {
+      background-color: #0056b3;
+    }
+
+    #map {
+      height: 400px;
+      width: 100%;
+      margin-top: 25px;
+      border-radius: 12px;
+      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+    }
+
+    #result {
+      margin-top: 20px;
+      text-align: left;
+    }
+
+    #result h3 {
+      margin-bottom: 10px;
+      color: #e6ebed;
+    }
+
+    #result p {
+      background-color: #f1f1f1;
+      padding: 10px 15px;
+      margin: 8px 0;
+      border-radius: 6px;
+      font-size: 16px;
+    }
+
+    @media (max-width: 600px) {
+      .container {
+        padding: 20px;
+        margin: 20px;
+      }
+
+      input, button {
+        font-size: 14px;
+      }
+
+      #map {
+        height: 300px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h2>🚖 Cab Compare</h2>
+    <input type="text" id="source" placeholder="Enter Source" />
+    <input type="text" id="destination" placeholder="Enter Destination" />
+    <button onclick="fetchCabPrices()">Compare Prices</button>
+    <div id="map"></div>
+    <div id="result"></div>
+  </div>
+
+  <script>
+    let map, sourceMarker, destMarker, directionsService, directionsRenderer;
+
+    function initMap() {
+      map = new google.maps.Map(document.getElementById('map'), {
+        center: { lat: 28.6139, lng: 77.2090 }, // New Delhi
+        zoom: 12
+      });
+
+      directionsService = new google.maps.DirectionsService();
+      directionsRenderer = new google.maps.DirectionsRenderer();
+      directionsRenderer.setMap(map);
+
+      const sourceInput = document.getElementById('source');
+      const destinationInput = document.getElementById('destination');
+
+      const sourceAutocomplete = new google.maps.places.Autocomplete(sourceInput);
+      const destinationAutocomplete = new google.maps.places.Autocomplete(destinationInput);
+
+      sourceAutocomplete.bindTo('bounds', map);
+      destinationAutocomplete.bindTo('bounds', map);
+
+      sourceAutocomplete.addListener('place_changed', () => {
+        let place = sourceAutocomplete.getPlace();
+        if (!place.geometry) return;
+
+        if (sourceMarker) sourceMarker.setMap(null);
+        sourceMarker = new google.maps.Marker({
+          map: map,
+          position: place.geometry.location,
+          label: 'S'
+        });
+
+        map.setCenter(place.geometry.location);
+        calculateAndDisplayRoute();
+      });
+
+      destinationAutocomplete.addListener('place_changed', () => {
+        let place = destinationAutocomplete.getPlace();
+        if (!place.geometry) return;
+
+        if (destMarker) destMarker.setMap(null);
+        destMarker = new google.maps.Marker({
+          map: map,
+          position: place.geometry.location,
+          label: 'D'
+        });
+
+        map.setCenter(place.geometry.location);
+        calculateAndDisplayRoute();
+      });
+    }
+
+    function calculateAndDisplayRoute() {
+      const source = document.getElementById('source').value;
+      const destination = document.getElementById('destination').value;
+      if (!source || !destination) return;
+
+      directionsService.route(
+        {
+          origin: source,
+          destination: destination,
+          travelMode: google.maps.TravelMode.DRIVING,
+        },
+        (response, status) => {
+          if (status === "OK") {
+            directionsRenderer.setDirections(response);
+          } else {
+            alert("Directions request failed due to " + status);
+          }
+        }
+      );
+    }
+
+    function fetchCabPrices() {
+      const source = document.getElementById('source').value;
+      const destination = document.getElementById('destination').value;
+      if (!source || !destination) {
+        alert("Please enter both source and destination.");
+        return;
+      }
+
+      calculateAndDisplayRoute();
+
+      const cabData = [
+        { name: "Uber", price: Math.floor(Math.random() * 500) + 100 },
+        { name: "Ola", price: Math.floor(Math.random() * 500) + 100 },
+        { name: "Rapido", price: Math.floor(Math.random() * 500) + 100 }
+      ];
+
+      let resultHTML = `<h3>Available Rides</h3>`;
+      cabData.sort((a, b) => a.price - b.price).forEach(cab => {
+        resultHTML += `<p><strong>${cab.name}:</strong> ₹${cab.price}</p>`;
+      });
+
+      document.getElementById('result').innerHTML = resultHTML;
+    }
+  </script>
+
+  <script async defer
+    src="https://maps.googleapis.com/maps/api/js?key=AIzaSyArKHnlebPVZKpB66uojlx6zr3gGLagemc&libraries=places&callback=initMap">
+  </script>
+</body>
+</html>
